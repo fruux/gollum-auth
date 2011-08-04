@@ -30,19 +30,21 @@ module Precious
 
     # Sinatra error handling
     configure :development, :staging do
-      enable :show_exceptions, :dump_errors
+      enable :show_exceptions, :dump_errors, :sessions
       disable :raise_errors, :clean_trace
     end
 
     configure :test do
-      enable :logging, :raise_errors, :dump_errors
+      enable :logging, :raise_errors, :dump_errors, :sessions
     end
 
     get '/' do
+      check_login
       show_page_or_file('Home')
     end
 
     get '/edit/*' do
+      check_login
       @name = params[:splat].first
       wiki = Gollum::Wiki.new(settings.gollum_path, settings.wiki_options)
       if page = wiki.page(@name)
@@ -55,6 +57,7 @@ module Precious
     end
 
     post '/edit/*' do
+      check_login
       wiki = Gollum::Wiki.new(settings.gollum_path, settings.wiki_options)
       page = wiki.page(params[:splat].first)
       name = params[:rename] || page.name
@@ -71,6 +74,7 @@ module Precious
     end
 
     post '/create' do
+      check_login
       name = params[:page]
       wiki = Gollum::Wiki.new(settings.gollum_path, settings.wiki_options)
 
@@ -86,6 +90,7 @@ module Precious
     end
 
     post '/revert/:page/*' do
+      check_login
       wiki  = Gollum::Wiki.new(settings.gollum_path, settings.wiki_options)
       @name = params[:page]
       @page = wiki.page(@name)
@@ -106,6 +111,7 @@ module Precious
     end
 
     post '/preview' do
+      check_login
       wiki      = Gollum::Wiki.new(settings.gollum_path, settings.wiki_options)
       @name     = "Preview"
       @page     = wiki.preview_page(@name, params[:content], params[:format])
@@ -115,6 +121,7 @@ module Precious
     end
 
     get '/history/:name' do
+      check_login
       @name     = params[:name]
       wiki      = Gollum::Wiki.new(settings.gollum_path, settings.wiki_options)
       @page     = wiki.page(@name)
@@ -124,6 +131,7 @@ module Precious
     end
 
     post '/compare/:name' do
+      check_login
       @versions = params[:versions] || []
       if @versions.size < 2
         redirect "/history/#{CGI.escape(params[:name])}"
@@ -136,6 +144,7 @@ module Precious
     end
 
     get '/compare/:name/:version_list' do
+      check_login
       @name     = params[:name]
       @versions = params[:version_list].split(/\.{2,3}/)
       wiki      = Gollum::Wiki.new(settings.gollum_path, settings.wiki_options)
@@ -150,6 +159,7 @@ module Precious
     end
 
     get %r{/(.+?)/([0-9a-f]{40})} do
+      check_login
       name = params[:captures][0]
       wiki = Gollum::Wiki.new(settings.gollum_path, settings.wiki_options)
       if page = wiki.page(name, params[:captures][1])
@@ -164,6 +174,7 @@ module Precious
     end
 
     get '/search' do
+      check_login
       @query = params[:q]
       wiki = Gollum::Wiki.new(settings.gollum_path, settings.wiki_options)
       @results = wiki.search @query
@@ -172,13 +183,28 @@ module Precious
     end
 
     get '/pages' do
+      check_login
       wiki = Gollum::Wiki.new(settings.gollum_path, settings.wiki_options)
       @results = wiki.pages
       @ref = wiki.ref
       mustache :pages
     end
 
+    get '/login' do
+      mustache :login
+    end
+
+    post '/login' do
+      if Gollum::Auth.new.login(params[:userid])
+        session[:name] = params[:userid]
+        redirect '/'
+      else
+        redirect '/login'
+      end
+    end
+
     get '/*' do
+      check_login
       show_page_or_file(params[:splat].first)
     end
 
@@ -200,7 +226,7 @@ module Precious
     end
 
     def update_wiki_page(wiki, page, content, commit_message, name = nil, format = nil)
-      return if !page ||  
+      return if !page ||
         ((!content || page.raw_data == content) && page.format == format)
       name    ||= page.name
       format    = (format || page.format).to_sym
@@ -208,8 +234,18 @@ module Precious
       wiki.update_page(page, name, format, content.to_s, commit_message)
     end
 
+    def check_login
+      unless session[:name]
+        redirect '/login'
+      end
+    end
+
     def commit_message
-      { :message => params[:message] }
+      {
+        :message => params[:message],
+        :name => session[:name],
+        :mail => '',
+      }
     end
   end
 end
