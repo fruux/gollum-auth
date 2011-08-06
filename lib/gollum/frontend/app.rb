@@ -39,7 +39,12 @@ module Precious
     end
 
     use Rack::Auth::Basic, "Enter your username and password." do |username, password|
-      Gollum::Auth.new.login(username, password)
+      if Gollum::Auth.new.login(username, password)
+        session[:name] = username
+        true
+      else
+        false
+      end
     end
 
     get '/' do
