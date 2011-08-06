@@ -30,12 +30,12 @@ module Precious
 
     # Sinatra error handling
     configure :development, :staging do
-      enable :show_exceptions, :dump_errors, :sessions
+      enable :show_exceptions, :dump_errors
       disable :raise_errors, :clean_trace
     end
 
     configure :test do
-      enable :logging, :raise_errors, :dump_errors, :sessions
+      enable :logging, :raise_errors, :dump_errors
     end
 
     use Rack::Auth::Basic, "Enter your username and password." do |username, password|
@@ -215,7 +215,7 @@ module Precious
     def commit_message
       {
         :message => params[:message],
-        :name => session[:name],
+        :name => env['REMOTE_USER'],
         :mail => '',
       }
     end
