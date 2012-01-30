@@ -53,6 +53,12 @@ module Gollum
       @actor ||= begin
         @options[:name]  = @wiki.default_committer_name  if @options[:name].to_s.empty?
         @options[:email] = @wiki.default_committer_email if @options[:email].to_s.empty?
+        
+        login = AuthData::find_by_login(@options[:name])
+        
+        @options[:name] = login[:realname]
+        @options[:email] =  login[:email]
+        
         Grit::Actor.new(@options[:name], @options[:email])
       end
     end

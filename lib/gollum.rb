@@ -19,6 +19,7 @@ require File.expand_path('../gollum/markup', __FILE__)
 require File.expand_path('../gollum/albino', __FILE__)
 require File.expand_path('../gollum/sanitization', __FILE__)
 require File.expand_path('../gollum/auth', __FILE__)
+require File.expand_path('../gollum/auth_data', __FILE__)
 
 module Gollum
   VERSION = '1.3.1'
